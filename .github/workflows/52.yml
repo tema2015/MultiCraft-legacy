@@ -40,35 +40,14 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
         
-    - name: Fix iconv with stub
+    - name: Fix iconv - disable in config
       run: |
         cd build/android/native/jni
-        
-        # Создаём файл-заглушку
-        cat > iconv_stub.cpp << 'EOF'
-        #include <stddef.h>
-        typedef void* iconv_t;
-        
-        iconv_t iconv_open(const char* to, const char* from) {
-            return (iconv_t)1;
-        }
-        
-        size_t iconv(iconv_t cd, char** inbuf, size_t* inbytesleft,
-                     char** outbuf, size_t* outbytesleft) {
-            return (size_t)-1;
-        }
-        
-        int iconv_close(iconv_t cd) {
-            return 0;
-        }
-        EOF
-        
-        # Добавляем заглушку в Android.mk
-        if ! grep -q "iconv_stub.cpp" Android.mk; then
-          sed -i '/LOCAL_SRC_FILES :=/ s/$/ iconv_stub.cpp/' Android.mk
-        fi
-        
-        echo "✅ Заглушка iconv добавлена"
+        # Отключаем USE_ICONV в конфиге
+        sed -i 's/#define USE_ICONV 1/#define USE_ICONV 0/' ../../../../src/config.h || true
+        # Ищем другие возможные места
+        find ../../../../src -name "*.h" -exec sed -i 's/#define USE_ICONV 1/#define USE_ICONV 0/g' {} \;
+        echo "✅ USE_ICONV отключён"
         
     - name: Build APK
       run: |
