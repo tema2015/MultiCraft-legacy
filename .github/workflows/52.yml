@@ -9,7 +9,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    # Шаг 1: JDK 17 для установки SDK
     - name: Set up JDK 17 for SDK
       uses: actions/setup-java@v4
       with:
@@ -22,15 +21,10 @@ jobs:
         packages: |
           platforms;android-28
           
-    # Шаг 2: Скачиваем ВСЕ зависимости разом
     - name: Download all dependencies
       run: |
         cd build/android
-        
-        # Клонируем репозиторий с зависимостями
         git clone --depth 1 https://github.com/MultiCraft/deps.git deps_repo
-        
-        # Копируем КАЖДУЮ папку из deps_repo/Android/ в native/deps/Android/
         for lib in deps_repo/Android/*; do
           if [ -d "$lib" ]; then
             libname=$(basename "$lib")
@@ -40,20 +34,21 @@ jobs:
           fi
         done
         
-        # Проверяем результат
-        echo "=== Проверка структуры ==="
-        ls -la native/deps/Android/
-        echo "=== Проверка Curl ==="
-        ls -la native/deps/Android/Curl/clang/arm64-v8a/libcurl.a && echo "✅ libcurl.a"
-        echo "=== Проверка Freetype ==="
-        ls -la native/deps/Android/Freetype/clang/arm64-v8a/libfreetype.a && echo "✅ libfreetype.a"
-        
-    # Шаг 3: Переключаемся на JDK 11 для сборки
     - name: Set up JDK 11 for Gradle
       uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'temurin'
+        
+    # 🔧 ФИКС ОШИБКИ ICONV
+    - name: Fix iconv missing
+      run: |
+        cd build/android/native/jni
+        # Включаем iconv в NDK
+        echo "APP_CFLAGS += -DANDROID_USE_ICONV=1" >> Application.mk
+        echo "APP_LDFLAGS += -liconv" >> Application.mk
+        # Проверяем, что добавилось
+        cat Application.mk
         
     - name: Build APK
       run: |
