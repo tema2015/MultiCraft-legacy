@@ -22,13 +22,19 @@ jobs:
           platforms;android-28
           build-tools;30.0.3
           ndk;23.2.8568313
-        # Добавляем обход проверки версии J
           
+    - name: Accept Android SDK licenses
+      run: |
+        # Принудительно принимаем все лицензии
+        yes | sdkmanager --licenses
+        
     - name: Build APK
       run: |
         cd build/android
         chmod +x build.sh
         ./build.sh
+      env:
+        ANDROID_HOME: $ANDROID_SDK_ROOT
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
