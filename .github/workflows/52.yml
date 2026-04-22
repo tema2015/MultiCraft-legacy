@@ -9,10 +9,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Set up JDK 11
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        java-version: '11'
+        java-version: '17'
         distribution: 'temurin'
         
     - name: Setup Android SDK
@@ -21,14 +21,45 @@ jobs:
         packages: |
           platforms;android-28
           
+    - name: Download libcurl.a and headers directly
+      run: |
+        cd build/android
+        
+        # Создаём нужную структуру папок
+        mkdir -p native/deps/Android/Curl/clang/arm64-v8a/
+        mkdir -p native/deps/Android/Curl/include/curl/
+        
+        # Скачиваем libcurl.a
+        echo "Скачиваем libcurl.a..."
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/clang/arm64-v8a/libcurl.a -O native/deps/Android/Curl/clang/arm64-v8a/libcurl.a
+        
+        # Скачиваем все заголовочные файлы curl
+        echo "Скачиваем заголовки curl..."
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/curl.h -O native/deps/Android/Curl/include/curl/curl.h
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/curlver.h -O native/deps/Android/Curl/include/curl/curlver.h
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/easy.h -O native/deps/Android/Curl/include/curl/easy.h
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/mprintf.h -O native/deps/Android/Curl/include/curl/mprintf.h
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/multi.h -O native/deps/Android/Curl/include/curl/multi.h
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/stdcheaders.h -O native/deps/Android/Curl/include/curl/stdcheaders.h
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/system.h -O native/deps/Android/Curl/include/curl/system.h
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/typecheck-gcc.h -O native/deps/Android/Curl/include/curl/typecheck-gcc.h
+        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/urlapi.h -O native/deps/Android/Curl/include/curl/urlapi.h
+        
+        # Проверяем результат
+        echo "=== Проверка ==="
+        ls -la native/deps/Android/Curl/clang/arm64-v8a/libcurl.a && echo "✅ libcurl.a на месте"
+        ls -la native/deps/Android/Curl/include/curl/ | head -5 && echo "✅ Заголовки на месте"
+        
     - name: Build APK
       run: |
         cd build/android
         chmod +x gradlew
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug --stacktrace
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: MultiCraft-APK
-        path: build/android/app/build/outputs/apk/debug/*.apk
+        path: |
+          build/android/app/build/outputs/apk/debug/*.apk
+          build/android/build/outputs/apk/debug/*.apk
