@@ -21,17 +21,57 @@ jobs:
         packages: |
           platforms;android-28
           
+    - name: Download and fix dependencies
+      run: |
+        cd build/android
+        
+        # Скачиваем зависимости проекта
+        wget https://github.com/MultiCraft/deps/archive/master.zip
+        unzip -q master.zip
+        
+        # Создаём нужную структуру папок
+        mkdir -p native/deps/Android/Curl/clang/arm64-v8a/
+        mkdir -p native/deps/Android/Curl/include/
+        
+        # Копируем библиотеку curl (ищем в разных возможных местах)
+        if [ -f "deps-master/Android/Clang/arm64-v8a/libcurl.a" ]; then
+          cp deps-master/Android/Clang/arm64-v8a/libcurl.a native/deps/Android/Curl/clang/arm64-v8a/
+          echo "✅ libcurl.a скопирован из Clang/arm64-v8a/"
+        elif [ -f "deps-master/Android/Clang/libcurl.a" ]; then
+          cp deps-master/Android/Clang/libcurl.a native/deps/Android/Curl/clang/arm64-v8a/
+          echo "✅ libcurl.a скопирован из Clang/"
+        elif [ -f "deps-master/Android/libcurl.a" ]; then
+          cp deps-master/Android/libcurl.a native/deps/Android/Curl/clang/arm64-v8a/
+          echo "✅ libcurl.a скопирован из Android/"
+        else
+          echo "⚠️ libcurl.a не найден, поиск по всем папкам..."
+          find deps-master -name "libcurl.a" -exec cp {} native/deps/Android/Curl/clang/arm64-v8a/ \;
+        fi
+        
+        # Копируем заголовочные файлы curl
+        if [ -d "deps-master/Android/include/curl" ]; then
+          cp -r deps-master/Android/include/curl native/deps/Android/Curl/include/
+          echo "✅ Заголовки curl скопированы"
+        elif [ -d "deps-master/include/curl" ]; then
+          cp -r deps-master/include/curl native/deps/Android/Curl/include/
+          echo "✅ Заголовки curl скопированы из include/"
+        fi
+        
+        # Проверяем результат
+        echo "=== Проверка: ==="
+        ls -la native/deps/Android/Curl/clang/arm64-v8a/libcurl.a || echo "❌ libcurl.a не найден!"
+        ls -la native/deps/Android/Curl/include/curl/ || echo "❌ Заголовки не найдены!"
+        
     - name: Build APK
       run: |
         cd build/android
         chmod +x gradlew
-        # Форсируем использование Java 11 для Gradle, сохраняя 17 для SDK
-        export JAVA_HOME=$JAVA_HOME_17_X64
-        # Добавляем параметры совместимости
-        ./gradlew assembleDebug -Dorg.gradle.jvmargs=-XX:MaxMetaspaceSize=512m
+        ./gradlew assembleDebug --stacktrace
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: MultiCraft-APK
-        path: build/android/app/build/outputs/apk/debug/*.apk
+        path: |
+          build/android/app/build/outputs/apk/debug/*.apk
+          build/android/build/outputs/apk/debug/*.apk
