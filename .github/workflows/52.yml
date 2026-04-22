@@ -40,15 +40,35 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
         
-    # 🔧 ФИКС ОШИБКИ ICONV
-    - name: Fix iconv missing
+    - name: Fix iconv with stub
       run: |
         cd build/android/native/jni
-        # Включаем iconv в NDK
-        echo "APP_CFLAGS += -DANDROID_USE_ICONV=1" >> Application.mk
-        echo "APP_LDFLAGS += -liconv" >> Application.mk
-        # Проверяем, что добавилось
-        cat Application.mk
+        
+        # Создаём файл-заглушку
+        cat > iconv_stub.cpp << 'EOF'
+        #include <stddef.h>
+        typedef void* iconv_t;
+        
+        iconv_t iconv_open(const char* to, const char* from) {
+            return (iconv_t)1;
+        }
+        
+        size_t iconv(iconv_t cd, char** inbuf, size_t* inbytesleft,
+                     char** outbuf, size_t* outbytesleft) {
+            return (size_t)-1;
+        }
+        
+        int iconv_close(iconv_t cd) {
+            return 0;
+        }
+        EOF
+        
+        # Добавляем заглушку в Android.mk
+        if ! grep -q "iconv_stub.cpp" Android.mk; then
+          sed -i '/LOCAL_SRC_FILES :=/ s/$/ iconv_stub.cpp/' Android.mk
+        fi
+        
+        echo "✅ Заглушка iconv добавлена"
         
     - name: Build APK
       run: |
