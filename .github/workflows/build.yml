@@ -15,18 +15,25 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        packages: |
-          platforms;android-28
-          build-tools;30.0.3
-          ndk;23.2.8568313
-        # Каждый пакет на новой строке, без пробелов в начале
-          
-    - name: Accept licenses (if needed)
+    - name: Install Android SDK
       run: |
-        yes | sdkmanager --licenses 2>/dev/null || true
+        # Скачиваем command line tools
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip -q commandlinetools-linux-11076708_latest.zip
+        
+        # Настраиваем структуру папок
+        mkdir -p android-sdk/cmdline-tools
+        mv cmdline-tools android-sdk/cmdline-tools/latest
+        
+        # Устанавливаем переменные окружения
+        echo "ANDROID_SDK_ROOT=$(pwd)/android-sdk" >> $GITHUB_ENV
+        echo "$(pwd)/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        
+        # Принимаем лицензии
+        yes | sdkmanager --licenses > /dev/null 2>&1
+        
+        # Устанавливаем СТАРЫЕ версии для совместимости с проектом 2022 года
+        sdkmanager "platforms;android-28" "build-tools;28.0.3" "ndk;21.4.7075529"
         
     - name: Build APK
       run: |
@@ -34,7 +41,8 @@ jobs:
         chmod +x build.sh
         ./build.sh
       env:
-        ANDROID_HOME: $ANDROID_SDK_ROOT
+        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
