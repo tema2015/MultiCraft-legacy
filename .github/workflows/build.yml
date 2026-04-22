@@ -22,11 +22,11 @@ jobs:
           platforms;android-28
           build-tools;30.0.3
           ndk;23.2.8568313
+        # Каждый пакет на новой строке, без пробелов в начале
           
-    - name: Accept Android SDK licenses
+    - name: Accept licenses (if needed)
       run: |
-        # Принудительно принимаем все лицензии
-        yes | sdkmanager --licenses
+        yes | sdkmanager --licenses 2>/dev/null || true
         
     - name: Build APK
       run: |
