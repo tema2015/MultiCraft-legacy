@@ -22,9 +22,7 @@ jobs:
           platforms;android-28
           build-tools;30.0.3
           ndk;23.2.8568313
-        # Добавляем обход проверки версии JDK
-        env:
-          SKIP_JDK_VERSION_CHECK: true
+        # Добавляем обход проверки версии J
           
     - name: Build APK
       run: |
