@@ -22,36 +22,33 @@ jobs:
         packages: |
           platforms;android-28
           
-    - name: Download libcurl.a and all headers
+    # Шаг 2: Скачиваем ВСЕ зависимости разом
+    - name: Download all dependencies
       run: |
         cd build/android
         
-        # Создаём структуру папок
-        mkdir -p native/deps/Android/Curl/clang/arm64-v8a/
-        mkdir -p native/deps/Android/Curl/include/curl/
+        # Клонируем репозиторий с зависимостями
+        git clone --depth 1 https://github.com/MultiCraft/deps.git deps_repo
         
-        # Скачиваем саму библиотеку
-        echo "Скачиваем libcurl.a..."
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/clang/arm64-v8a/libcurl.a -O native/deps/Android/Curl/clang/arm64-v8a/libcurl.a
+        # Копируем КАЖДУЮ папку из deps_repo/Android/ в native/deps/Android/
+        for lib in deps_repo/Android/*; do
+          if [ -d "$lib" ]; then
+            libname=$(basename "$lib")
+            echo "Копируем библиотеку: $libname"
+            mkdir -p "native/deps/Android/$libname"
+            cp -r "$lib"/* "native/deps/Android/$libname/"
+          fi
+        done
         
-        # Скачиваем ВСЕ заголовочные файлы curl
-        echo "Скачиваем заголовочные файлы..."
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/curl.h -O native/deps/Android/Curl/include/curl/curl.h
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/curlver.h -O native/deps/Android/Curl/include/curl/curlver.h
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/easy.h -O native/deps/Android/Curl/include/curl/easy.h
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/mprintf.h -O native/deps/Android/Curl/include/curl/mprintf.h
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/multi.h -O native/deps/Android/Curl/include/curl/multi.h
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/stdcheaders.h -O native/deps/Android/Curl/include/curl/stdcheaders.h
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/system.h -O native/deps/Android/Curl/include/curl/system.h
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/typecheck-gcc.h -O native/deps/Android/Curl/include/curl/typecheck-gcc.h
-        wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/urlapi.h -O native/deps/Android/Curl/include/curl/urlapi.h
-        
-        # Проверяем, что всё скачалось
-        echo "=== Проверка ==="
+        # Проверяем результат
+        echo "=== Проверка структуры ==="
+        ls -la native/deps/Android/
+        echo "=== Проверка Curl ==="
         ls -la native/deps/Android/Curl/clang/arm64-v8a/libcurl.a && echo "✅ libcurl.a"
-        ls -la native/deps/Android/Curl/include/curl/ && echo "✅ Заголовки"
+        echo "=== Проверка Freetype ==="
+        ls -la native/deps/Android/Freetype/clang/arm64-v8a/libfreetype.a && echo "✅ libfreetype.a"
         
-    # Шаг 2: Переключаемся на JDK 11 для сборки
+    # Шаг 3: Переключаемся на JDK 11 для сборки
     - name: Set up JDK 11 for Gradle
       uses: actions/setup-java@v4
       with:
@@ -62,7 +59,6 @@ jobs:
       run: |
         cd build/android
         chmod +x gradlew
-        # Явно указываем JAVA_HOME для JDK 11
         export JAVA_HOME=$JAVA_HOME_11_X64
         ./gradlew assembleDebug --no-daemon
         
