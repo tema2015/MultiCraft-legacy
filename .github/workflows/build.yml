@@ -1,28 +1,38 @@
-name: Build APK
-on: workflow_dispatch  # Позволит вам запустить сборку вручную кнопкой
+name: Build MultiCraft APK
+on:
+  workflow_dispatch:  # Запуск вручную с телефона
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 17
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '11'
         distribution: 'temurin'
-    - name: Set up Android NDK
-      uses: nttld/setup-ndk@v1
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
       with:
-        ndk-version: r23c
-    - name: Build with Gradle
+        packages: |
+          platforms;android-28
+          build-tools;30.0.3
+          ndk;23.2.8568313
+          
+    - name: Build APK
       run: |
-        # Даём права на запуск скрипта
-        chmod +x gradlew
-        # Запускаем сборку (возможны ошибки, которые придется править)
-        ./gradlew assembleDebug
+        cd build/android
+        # Делаем скрипт сборки исполняемым
+        chmod +x build.sh
+        # Запускаем сборку
+        ./build.sh
+        
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/*.apk
+        name: MultiCraft-APK
+        path: build/android/*.apk
