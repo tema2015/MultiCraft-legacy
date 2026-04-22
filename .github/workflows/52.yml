@@ -9,7 +9,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Set up JDK 17
+    # Шаг 1: JDK 17 для установки SDK
+    - name: Set up JDK 17 for SDK
       uses: actions/setup-java@v4
       with:
         java-version: '17'
@@ -21,20 +22,20 @@ jobs:
         packages: |
           platforms;android-28
           
-    - name: Download libcurl.a and headers directly
+    - name: Download libcurl.a and all headers
       run: |
         cd build/android
         
-        # Создаём нужную структуру папок
+        # Создаём структуру папок
         mkdir -p native/deps/Android/Curl/clang/arm64-v8a/
         mkdir -p native/deps/Android/Curl/include/curl/
         
-        # Скачиваем libcurl.a
+        # Скачиваем саму библиотеку
         echo "Скачиваем libcurl.a..."
         wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/clang/arm64-v8a/libcurl.a -O native/deps/Android/Curl/clang/arm64-v8a/libcurl.a
         
-        # Скачиваем все заголовочные файлы curl
-        echo "Скачиваем заголовки curl..."
+        # Скачиваем ВСЕ заголовочные файлы curl
+        echo "Скачиваем заголовочные файлы..."
         wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/curl.h -O native/deps/Android/Curl/include/curl/curl.h
         wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/curlver.h -O native/deps/Android/Curl/include/curl/curlver.h
         wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/easy.h -O native/deps/Android/Curl/include/curl/easy.h
@@ -45,16 +46,25 @@ jobs:
         wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/typecheck-gcc.h -O native/deps/Android/Curl/include/curl/typecheck-gcc.h
         wget -q https://raw.githubusercontent.com/MultiCraft/deps/master/Android/Curl/include/curl/urlapi.h -O native/deps/Android/Curl/include/curl/urlapi.h
         
-        # Проверяем результат
+        # Проверяем, что всё скачалось
         echo "=== Проверка ==="
-        ls -la native/deps/Android/Curl/clang/arm64-v8a/libcurl.a && echo "✅ libcurl.a на месте"
-        ls -la native/deps/Android/Curl/include/curl/ | head -5 && echo "✅ Заголовки на месте"
+        ls -la native/deps/Android/Curl/clang/arm64-v8a/libcurl.a && echo "✅ libcurl.a"
+        ls -la native/deps/Android/Curl/include/curl/ && echo "✅ Заголовки"
+        
+    # Шаг 2: Переключаемся на JDK 11 для сборки
+    - name: Set up JDK 11 for Gradle
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
         
     - name: Build APK
       run: |
         cd build/android
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
+        # Явно указываем JAVA_HOME для JDK 11
+        export JAVA_HOME=$JAVA_HOME_11_X64
+        ./gradlew assembleDebug --no-daemon
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
