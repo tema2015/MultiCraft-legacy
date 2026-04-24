@@ -1,0 +1,72 @@
+name: Build MultiCraft APK
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17 for SDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: |
+          platforms;android-28
+          
+    - name: Download all dependencies
+      run: |
+        cd build/android
+        git clone --depth 1 https://github.com/MultiCraft/deps.git deps_repo
+        for lib in deps_repo/Android/*; do
+          if [ -d "$lib" ]; then
+            libname=$(basename "$lib")
+            echo "Копируем библиотеку: $libname"
+            mkdir -p "native/deps/Android/$libname"
+            cp -r "$lib"/* "native/deps/Android/$libname/"
+          fi
+        done
+        
+    - name: Set up JDK 11 for Gradle
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Fix iconv - define empty macros
+      run: |
+        # Добавляем в начало config.h определение макросов-пустышек для iconv
+        cat >> src/config.h << 'EOF'
+        
+        // Android NDK iconv compatibility
+        #define iconv_open(a,b) ((iconv_t)-1)
+        #define iconv(a,b,c,d,e) ((size_t)-1)
+        #define iconv_close(a) 0
+        EOF
+        
+        # Также добавляем в build/android/native/jni/Application.mk
+        echo "APP_CFLAGS += -Diconv_open=error -Diconv=error -Diconv_close=error" >> build/android/native/jni/Application.mk
+        
+        echo "✅ iconv macros defined"
+        
+    - name: Build APK
+      run: |
+        cd build/android
+        chmod +x gradlew
+        export JAVA_HOME=$JAVA_HOME_11_X64
+        ./gradlew assembleDebug --no-daemon
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: MultiCraft-APK
+        path: |
+          build/android/app/build/outputs/apk/debug/*.apk
+          build/android/build/outputs/apk/debug/*.apk
